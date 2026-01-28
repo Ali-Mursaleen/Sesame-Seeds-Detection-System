@@ -1,0 +1,8 @@
+names:
+- healthy
+- black
+- rain_damaged
+nc: 3
+path: /media/osama/E/Projects/Sesame-Seeds-Detection-System/yolov8
+train: images/train
+val: images/val
