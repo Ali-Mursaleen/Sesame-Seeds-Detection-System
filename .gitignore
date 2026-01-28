@@ -4,3 +4,6 @@ venv/
 # Ignore augmented data
 Augmented_Data/
 
+# Ignore Yolo data
+yolov8/images/
+yolov8/labels/
