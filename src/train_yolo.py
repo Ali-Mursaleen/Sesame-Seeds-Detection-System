@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Train YOLOv8 model for sesame seed detection
+OPTIMIZED YOLOv8 training for low-spec PCs
 """
 
 import os
 import sys
-import torch
 from pathlib import Path
 from ultralytics import YOLO
 import yaml
-import shutil
+import torch
 
-class SesameSeedTrainer:
+class OptimizedSesameTrainer:
     def __init__(self):
         self.project_dir = Path(".")
         self.data_config = self.project_dir / "yolov8" / "dataset.yaml"
@@ -21,153 +20,203 @@ class SesameSeedTrainer:
         # Create directories
         self.models_dir.mkdir(exist_ok=True)
         
-        # Training configuration
+        # OPTIMIZED CONFIG FOR LOW-SPEC PCS
         self.config = {
-            'model': 'yolov8n.pt',  # Start with nano model (fastest)
-            'epochs': 100,           # Number of training epochs
-            'imgsz': 640,            # Input image size
-            'batch': 16,             # Batch size
-            'workers': 4,            # Data loader workers
-            'patience': 30,          # Early stopping patience
-            'lr0': 0.01,             # Initial learning rate
-            'lrf': 0.01,             # Final learning rate factor
-            'momentum': 0.937,       # SGD momentum
-            'weight_decay': 0.0005,  # Optimizer weight decay
-            'warmup_epochs': 3,      # Warmup epochs
-            'warmup_momentum': 0.8,  # Warmup momentum
-            'box': 7.5,              # Box loss gain
-            'cls': 0.5,              # Class loss gain
-            'dfl': 1.5,              # Distribution Focal Loss gain
-            'hsv_h': 0.015,          # Image HSV-Hue augmentation
-            'hsv_s': 0.7,            # Image HSV-Saturation augmentation
-            'hsv_v': 0.4,            # Image HSV-Value augmentation
-            'degrees': 0.0,          # Image rotation (+/- deg)
-            'translate': 0.1,        # Image translation (+/- fraction)
-            'scale': 0.5,            # Image scale (+/- gain)
-            'shear': 0.0,            # Image shear (+/- deg)
-            'perspective': 0.0,      # Image perspective (+/- fraction)
-            'flipud': 0.0,           # Image flip up-down (probability)
-            'fliplr': 0.5,           # Image flip left-right (probability)
-            'mosaic': 1.0,           # Image mosaic (probability)
-            'mixup': 0.0,            # Image mixup (probability)
-            'copy_paste': 0.0,       # Segment copy-paste (probability)
-            'save': True,            # Save checkpoints
-            'save_period': -1,       # Save checkpoint every x epochs
-            'cache': False,          # Cache images
-            'device': self.get_device(),  # Device selection
-            'project': str(self.runs_dir / "detect"),  # Save directory
-            'name': 'sesame_train',  # Experiment name
-            'exist_ok': True,        # Overwrite existing experiment
-            'pretrained': True,      # Use pretrained weights
-            'optimizer': 'AdamW',    # Optimizer choice
-            'verbose': True,         # Verbose mode
-            'seed': 42,              # Random seed
-            'single_cls': False,     # Train as single-class dataset
-            'rect': False,           # Rectangular training
-            'cos_lr': False,         # Cosine LR scheduler
-            'close_mosaic': 10,      # Disable mosaic at final epoch
-            'resume': False,         # Resume from last checkpoint
-            'amp': True,             # Automatic Mixed Precision
-            'fraction': 1.0,         # Fraction of dataset to use
-            'profile': False,        # Profile ONNX and TensorRT
-            'overlap_mask': True,    # Masks should overlap
-            'mask_ratio': 4,         # Mask downsample ratio
-            'dropout': 0.0,          # Use dropout regularization
-            'val': True,             # Validate during training
-            'plots': True,           # Save plots during training
+            'model': 'yolov8n.pt',  # NANO model (smallest)
+            'epochs': 30,            # REDUCED epochs (from 100)
+            'imgsz': 320,           # REDUCED image size (from 640)
+            'batch': 4,             # REDUCED batch size (from 16)
+            'workers': 2,           # REDUCED workers (from 4)
+            'patience': 10,         # Early stopping patience
+            'device': self.get_device(),
+            'project': str(self.runs_dir / "detect"),
+            'name': 'sesame_optimized',
+            'exist_ok': True,
+            'pretrained': True,
+            'optimizer': 'SGD',     # SGD uses less memory than AdamW
+            'lr0': 0.01,           # Learning rate
+            'momentum': 0.937,
+            'weight_decay': 0.0005,
+            'warmup_epochs': 3,
+            'box': 7.5,
+            'cls': 0.5,
+            'dfl': 1.5,
+            'close_mosaic': 10,
+            'amp': False,          # DISABLE mixed precision (causes issues on CPU)
+            'cache': False,        # DISABLE caching (saves RAM)
+            'verbose': False,      # Less verbose output
+            'save': True,
+            'save_period': -1,
+            'val': True,
+            'plots': False,        # DISABLE plots during training (saves RAM)
+            'rect': False,
+            'cos_lr': False,
+            'overlap_mask': True,
+            'mask_ratio': 4,
+            'dropout': 0.0,
+            'resume': False,
         }
+        
+        # Print system info
+        self.print_system_info()
+    
+    def print_system_info(self):
+        """Print system information for debugging"""
+        print("="*60)
+        print("SYSTEM INFORMATION")
+        print("="*60)
+        print(f"Python: {sys.version}")
+        print(f"PyTorch: {torch.__version__}")
+        print(f"Device: {self.get_device()}")
+        
+        if torch.cuda.is_available():
+            print(f"CUDA: Available")
+            print(f"GPU: {torch.cuda.get_device_name(0)}")
+            print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+        else:
+            print("CUDA: Not available (using CPU)")
+        
+        # Check RAM
+        import psutil
+        ram = psutil.virtual_memory()
+        print(f"RAM: {ram.total / 1e9:.2f} GB total, {ram.available / 1e9:.2f} GB available")
+        print("="*60)
     
     def get_device(self):
-        """Select the best available device"""
-        if torch.cuda.is_available():
-            return 'cuda'
-        elif torch.backends.mps.is_available():
-            return 'mps'  # Apple Silicon
-        else:
-            return 'cpu'
+        """Select device, prefer CPU for stability"""
+        # Force CPU for low-spec PCs
+        # Remove the comment below if you have a good GPU
+        # if torch.cuda.is_available():
+        #     return 'cuda'
+        return 'cpu'  # Force CPU training
     
     def check_dataset(self):
         """Check if dataset is properly prepared"""
-        print("Checking dataset...")
+        print("\nChecking dataset...")
         
-        # Check dataset.yaml exists
         if not self.data_config.exists():
             print(f"❌ Dataset config not found: {self.data_config}")
-            print("Please run prepare_yolo_data.py first")
             return False
         
-        # Load and check config
+        # Load config
         with open(self.data_config, 'r') as f:
             data_cfg = yaml.safe_load(f)
         
         # Check paths
-        required_paths = ['train', 'val']
-        for path_key in required_paths:
-            path = self.project_dir / data_cfg['path'] / data_cfg[path_key]
-            if not path.exists():
-                print(f"❌ Path not found: {path}")
-                return False
-            
-            # Check if directory has images
-            image_files = list(path.glob("*.jpg")) + list(path.glob("*.png")) + list(path.glob("*.jpeg"))
-            if len(image_files) == 0:
-                print(f"❌ No images found in: {path}")
-                return False
-            print(f"✓ Found {len(image_files)} images in {path_key}")
+        train_path = self.project_dir / data_cfg['path'] / data_cfg['train']
+        val_path = self.project_dir / data_cfg['path'] / data_cfg['val']
         
-        # Check labels
-        labels_dir = self.project_dir / data_cfg['path'] / "labels"
-        if not labels_dir.exists():
-            print(f"❌ Labels directory not found: {labels_dir}")
+        if not train_path.exists() or not val_path.exists():
+            print(f"❌ Train/val paths not found")
             return False
         
-        print("✓ Dataset check passed!")
+        # Count images
+        train_images = len(list(train_path.glob("*.jpg")))
+        val_images = len(list(val_path.glob("*.jpg")))
+        
+        print(f"✓ Training images: {train_images}")
+        print(f"✓ Validation images: {val_images}")
+        
+        if train_images == 0:
+            print("❌ No training images found")
+            return False
+        
         return True
     
-    def print_training_info(self):
-        """Print training configuration information"""
-        print("\n" + "="*60)
-        print("YOLOv8 TRAINING CONFIGURATION")
-        print("="*60)
-        
-        print(f"\nDataset:")
-        print(f"  Config: {self.data_config}")
+    def reduce_dataset_size(self, keep_fraction=0.5):
+        """
+        Reduce dataset size for faster training on low-spec PCs
+        Only keep a fraction of the data
+        """
+        print(f"\nReducing dataset size (keeping {keep_fraction*100}%)...")
         
         with open(self.data_config, 'r') as f:
             data_cfg = yaml.safe_load(f)
-            print(f"  Classes: {data_cfg['names']}")
-            print(f"  Number of classes: {data_cfg['nc']}")
         
-        print(f"\nModel:")
-        print(f"  Model: {self.config['model']}")
-        print(f"  Device: {self.config['device']}")
-        print(f"  Image size: {self.config['imgsz']}")
-        print(f"  Batch size: {self.config['batch']}")
-        print(f"  Epochs: {self.config['epochs']}")
+        train_dir = self.project_dir / data_cfg['path'] / data_cfg['train']
+        val_dir = self.project_dir / data_cfg['path'] / data_cfg['val']
         
-        print(f"\nTraining:")
-        print(f"  Learning rate: {self.config['lr0']}")
-        print(f"  Optimizer: {self.config['optimizer']}")
-        print(f"  Augmentation: Enabled")
-        print(f"  Early stopping: {self.config['patience']} epochs")
+        # Reduce training images
+        train_images = list(train_dir.glob("*.jpg"))
+        keep_count = int(len(train_images) * keep_fraction)
         
-        print(f"\nOutput:")
-        print(f"  Project: {self.config['project']}")
-        print(f"  Name: {self.config['name']}")
-        print(f"  Models will be saved to: {self.models_dir}")
+        import random
+        random.shuffle(train_images)
+        images_to_remove = train_images[keep_count:]
         
+        print(f"Keeping {keep_count} of {len(train_images)} training images")
+        
+        # Remove excess images and their labels
+        for img_path in images_to_remove:
+            # Remove image
+            if img_path.exists():
+                img_path.unlink()
+            
+            # Remove corresponding label
+            label_path = (self.project_dir / data_cfg['path'] / 'labels' / 'train' / 
+                         f"{img_path.stem}.txt")
+            if label_path.exists():
+                label_path.unlink()
+        
+        return True
+    
+    def train_lightweight(self):
+        """Ultra-lightweight training for very low-spec PCs"""
         print("\n" + "="*60)
+        print("ULTRA-LIGHTWEIGHT TRAINING MODE")
+        print("="*60)
+        
+        # Further reduce settings
+        self.config.update({
+            'epochs': 20,
+            'imgsz': 224,      # Even smaller
+            'batch': 2,        # Tiny batch
+            'workers': 1,      # Single worker
+            'patience': 5,
+        })
+        
+        # Reduce dataset
+        self.reduce_dataset_size(keep_fraction=0.3)
+        
+        return self.train()
     
     def train(self):
-        """Train the YOLOv8 model"""
-        print("\nStarting training...")
+        """Train the model with optimized settings"""
+        print("\n" + "="*60)
+        print("STARTING OPTIMIZED TRAINING")
+        print("="*60)
+        print(f"Model: {self.config['model']}")
+        print(f"Device: {self.config['device']}")
+        print(f"Image size: {self.config['imgsz']}")
+        print(f"Batch size: {self.config['batch']}")
+        print(f"Epochs: {self.config['epochs']}")
+        print("="*60)
         
         try:
             # Load model
-            print(f"Loading model: {self.config['model']}")
+            print("Loading model...")
             model = YOLO(self.config['model'])
             
-            # Train the model
+            # Monitor memory during training
+            import threading
+            stop_monitoring = False
+            
+            def monitor_memory():
+                import psutil
+                import time
+                while not stop_monitoring:
+                    ram = psutil.virtual_memory()
+                    print(f"RAM Usage: {ram.used / 1e9:.2f} GB / {ram.total / 1e9:.2f} GB ({ram.percent}%)")
+                    time.sleep(30)  # Check every 30 seconds
+            
+            # Start memory monitoring thread
+            monitor_thread = threading.Thread(target=monitor_memory, daemon=True)
+            monitor_thread.start()
+            
+            # Train with minimal settings
+            print("\nTraining started... (This may take 15-30 minutes)")
+            print("Press Ctrl+C to stop early if needed")
+            
             results = model.train(
                 data=str(self.data_config),
                 epochs=self.config['epochs'],
@@ -175,185 +224,163 @@ class SesameSeedTrainer:
                 batch=self.config['batch'],
                 workers=self.config['workers'],
                 patience=self.config['patience'],
-                lr0=self.config['lr0'],
-                lrf=self.config['lrf'],
-                momentum=self.config['momentum'],
-                weight_decay=self.config['weight_decay'],
-                warmup_epochs=self.config['warmup_epochs'],
-                warmup_momentum=self.config['warmup_momentum'],
-                box=self.config['box'],
-                cls=self.config['cls'],
-                dfl=self.config['dfl'],
-                hsv_h=self.config['hsv_h'],
-                hsv_s=self.config['hsv_s'],
-                hsv_v=self.config['hsv_v'],
-                degrees=self.config['degrees'],
-                translate=self.config['translate'],
-                scale=self.config['scale'],
-                shear=self.config['shear'],
-                perspective=self.config['perspective'],
-                flipud=self.config['flipud'],
-                fliplr=self.config['fliplr'],
-                mosaic=self.config['mosaic'],
-                mixup=self.config['mixup'],
-                copy_paste=self.config['copy_paste'],
-                save=self.config['save'],
-                save_period=self.config['save_period'],
-                cache=self.config['cache'],
                 device=self.config['device'],
                 project=self.config['project'],
                 name=self.config['name'],
                 exist_ok=self.config['exist_ok'],
                 pretrained=self.config['pretrained'],
                 optimizer=self.config['optimizer'],
+                lr0=self.config['lr0'],
+                momentum=self.config['momentum'],
+                weight_decay=self.config['weight_decay'],
+                warmup_epochs=self.config['warmup_epochs'],
+                box=self.config['box'],
+                cls=self.config['cls'],
+                dfl=self.config['dfl'],
+                close_mosaic=self.config['close_mosaic'],
+                amp=self.config['amp'],
+                cache=self.config['cache'],
                 verbose=self.config['verbose'],
-                seed=self.config['seed'],
-                single_cls=self.config['single_cls'],
+                save=self.config['save'],
+                save_period=self.config['save_period'],
+                val=self.config['val'],
+                plots=self.config['plots'],
                 rect=self.config['rect'],
                 cos_lr=self.config['cos_lr'],
-                close_mosaic=self.config['close_mosaic'],
-                resume=self.config['resume'],
-                amp=self.config['amp'],
-                fraction=self.config['fraction'],
-                profile=self.config['profile'],
                 overlap_mask=self.config['overlap_mask'],
                 mask_ratio=self.config['mask_ratio'],
                 dropout=self.config['dropout'],
-                val=self.config['val'],
-                plots=self.config['plots'],
+                resume=self.config['resume'],
             )
+            
+            stop_monitoring = True
+            monitor_thread.join(timeout=5)
             
             return results
             
+        except KeyboardInterrupt:
+            print("\n\n⚠️ Training interrupted by user")
+            print("Saving current model...")
+            stop_monitoring = True
+            return None
         except Exception as e:
-            print(f"❌ Training failed: {e}")
+            print(f"\n❌ Training error: {e}")
             return None
     
     def save_best_model(self):
-        """Copy the best model to models directory"""
-        # Find the latest training run
+        """Copy the best model"""
         train_runs = list((self.runs_dir / "detect").glob("*"))
         if not train_runs:
-            print("No training runs found")
             return
         
-        latest_run = max(train_runs, key=os.path.getmtime)
+        latest_run = max(train_runs, key=lambda x: x.stat().st_mtime)
         weights_dir = latest_run / "weights"
         
         if weights_dir.exists():
-            # Find best model
             best_model = weights_dir / "best.pt"
             if best_model.exists():
-                # Copy to models directory
-                dest_path = self.models_dir / "best_yolo.pt"
+                import shutil
+                dest_path = self.models_dir / "best_yolo_optimized.pt"
                 shutil.copy2(best_model, dest_path)
-                print(f"✓ Best model saved to: {dest_path}")
+                print(f"\n✅ Best model saved to: {dest_path}")
                 
-                # Also copy last model
-                last_model = weights_dir / "last.pt"
-                if last_model.exists():
-                    shutil.copy2(last_model, self.models_dir / "last_yolo.pt")
-            
-            # Copy args.yaml for reference
-            args_file = latest_run / "args.yaml"
-            if args_file.exists():
-                shutil.copy2(args_file, self.models_dir / "training_args.yaml")
+                # Also copy config
+                args_file = latest_run / "args.yaml"
+                if args_file.exists():
+                    shutil.copy2(args_file, self.models_dir / "training_args.yaml")
     
-    def print_training_summary(self):
-        """Print summary of training results"""
-        # Find the latest training run
-        train_runs = list((self.runs_dir / "detect").glob("*"))
-        if not train_runs:
-            print("No training runs found")
-            return
+    def run(self, mode='optimized'):
+        """Run training pipeline"""
+        print("\n" + "="*60)
+        print("SESAME SEED DETECTION - OPTIMIZED TRAINING")
+        print("="*60)
         
-        latest_run = max(train_runs, key=os.path.getmtime)
+        # Check dataset
+        if not self.check_dataset():
+            print("\n❌ Dataset check failed")
+            return False
         
+        # Ask for mode
+        print("\nSelect training mode:")
+        print("1. Optimized (Recommended for most PCs)")
+        print("2. Ultra-lightweight (For very low-spec PCs)")
+        print("3. Custom settings")
+        
+        choice = input("\nEnter choice (1-3, default=1): ").strip()
+        
+        if choice == '2':
+            results = self.train_lightweight()
+        elif choice == '3':
+            self.custom_settings()
+            results = self.train()
+        else:
+            results = self.train()
+        
+        if results is not None:
+            self.save_best_model()
+            self.print_summary()
+            return True
+        
+        return False
+    
+    def custom_settings(self):
+        """Allow user to set custom training parameters"""
+        print("\n" + "="*60)
+        print("CUSTOM TRAINING SETTINGS")
+        print("="*60)
+        
+        print(f"Current image size: {self.config['imgsz']}")
+        new_size = input("Enter image size (224, 320, 416, 512, 640): ").strip()
+        if new_size.isdigit():
+            self.config['imgsz'] = int(new_size)
+        
+        print(f"\nCurrent batch size: {self.config['batch']}")
+        new_batch = input("Enter batch size (1-16, lower=less memory): ").strip()
+        if new_batch.isdigit():
+            self.config['batch'] = int(new_batch)
+        
+        print(f"\nCurrent epochs: {self.config['epochs']}")
+        new_epochs = input("Enter number of epochs (10-100): ").strip()
+        if new_epochs.isdigit():
+            self.config['epochs'] = int(new_epochs)
+        
+        print("\nUpdated settings:")
+        print(f"Image size: {self.config['imgsz']}")
+        print(f"Batch size: {self.config['batch']}")
+        print(f"Epochs: {self.config['epochs']}")
+    
+    def print_summary(self):
+        """Print training summary"""
         print("\n" + "="*60)
         print("TRAINING COMPLETE!")
         print("="*60)
-        
-        print(f"\nResults saved to: {latest_run}")
-        
-        # Check for results files
-        results_file = latest_run / "results.csv"
-        if results_file.exists():
-            print("\nTraining metrics available in:")
-            print(f"  CSV results: {results_file}")
-        
-        # Check for plots
-        plots = list(latest_run.glob("*.png"))
-        if plots:
-            print("\nGenerated plots:")
-            for plot in plots:
-                print(f"  • {plot.name}")
-        
-        print(f"\nBest model saved to: {self.models_dir}/best_yolo.pt")
-        
-        print("\nNext steps:")
-        print("1. Evaluate model: python src/detect.py --eval")
-        print("2. Test on images: python src/detect.py --image test.jpg")
-        print("3. View training results in browser: tensorboard --logdir runs")
-    
-    def run(self):
-        """Run complete training pipeline"""
-        print("="*60)
-        print("SESAME SEED DETECTION - YOLOv8 TRAINING")
-        print("="*60)
-        
-        # Step 1: Check dataset
-        if not self.check_dataset():
-            print("\n❌ Dataset check failed. Please fix issues above.")
-            return False
-        
-        # Step 2: Print training info
-        self.print_training_info()
-        
-        # Step 3: Start training
-        input("\nPress Enter to start training (or Ctrl+C to cancel)...")
-        
-        try:
-            results = self.train()
-            if results is None:
-                return False
-            
-            # Step 4: Save best model
-            self.save_best_model()
-            
-            # Step 5: Print summary
-            self.print_training_summary()
-            
-            return True
-            
-        except KeyboardInterrupt:
-            print("\n\n⚠️  Training interrupted by user")
-            return False
-        except Exception as e:
-            print(f"\n❌ Training error: {e}")
-            return False
+        print("\n✅ Model trained successfully!")
+        print(f"📁 Model saved to: models/best_yolo_optimized.pt")
+        print(f"📊 Training logs: runs/detect/sesame_optimized/")
+        print("\n🚀 Next: Test your model:")
+        print("python src/detect.py --image test.jpg --model models/best_yolo_optimized.pt")
 
 
 def train_model():
-    """Main function to train YOLO model"""
-    trainer = SesameSeedTrainer()
+    """Main function"""
+    trainer = OptimizedSesameTrainer()
     return trainer.run()
 
 
 if __name__ == "__main__":
-    # Check if ultralytics is installed
+    # Install psutil for memory monitoring
     try:
-        from ultralytics import YOLO
+        import psutil
     except ImportError:
-        print("Installing ultralytics...")
+        print("Installing psutil for memory monitoring...")
         import subprocess
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "ultralytics"])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "psutil"])
     
-    # Run training
     success = train_model()
     
     if success:
-        print("\n✅ Training completed successfully!")
+        print("\n🎉 Optimization complete! Your PC should handle this well.")
         sys.exit(0)
     else:
-        print("\n❌ Training failed!")
+        print("\n❌ Training failed")
         sys.exit(1)

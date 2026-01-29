@@ -1,9 +1,10 @@
-# Ignore virtual environment
+# Python virtual environment
 venv/
 
-# Ignore augmented data
+# Generated / augmented datasets
 Augmented_Data/
 
-# Ignore Yolo data
+# Ignore YOLOv8 generated datasets only
 yolov8/images/
 yolov8/labels/
+
