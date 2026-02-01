@@ -268,28 +268,33 @@ class OptimizedSesameTrainer:
             return None
     
     def save_best_model(self):
-        """Copy the best model"""
-        train_runs = list((self.runs_dir / "detect").glob("*"))
-        if not train_runs:
-            return
+        """Copy the best model found in runs directory"""
+        print("\nSaving best model...")
+        best_model = None
         
-        latest_run = max(train_runs, key=lambda x: x.stat().st_mtime)
-        weights_dir = latest_run / "weights"
+        # Search for the most recently modified best.pt in the runs directory
+        all_best_weights = list(self.runs_dir.rglob("best.pt"))
+        if all_best_weights:
+            best_model = max(all_best_weights, key=lambda x: x.stat().st_mtime)
         
-        if weights_dir.exists():
-            best_model = weights_dir / "best.pt"
-            if best_model.exists():
-                import shutil
-                dest_path = self.models_dir / "best_yolo_optimized.pt"
-                shutil.copy2(best_model, dest_path)
-                print(f"\n✅ Best model saved to: {dest_path}")
-                
-                # Also copy config
-                args_file = latest_run / "args.yaml"
-                if args_file.exists():
-                    shutil.copy2(args_file, self.models_dir / "training_args.yaml")
+        if best_model and best_model.exists():
+            import shutil
+            dest_path = self.models_dir / "best_yolo_optimized.pt"
+            shutil.copy2(best_model, dest_path)
+            print(f"✅ Best model saved to: {dest_path}")
+            
+            # Also copy to standard best_yolo.pt for API compatibility
+            shutil.copy2(best_model, self.models_dir / "best_yolo.pt")
+            
+            # Also copy config
+            latest_run_dir = best_model.parents[1]
+            args_file = latest_run_dir / "args.yaml"
+            if args_file.exists():
+                shutil.copy2(args_file, self.models_dir / "training_args.yaml")
+        else:
+            print("⚠️ No best.pt found in runs directory")
     
-    def run(self, mode='optimized'):
+    def run(self, mode='optimized', interactive=True):
         """Run training pipeline"""
         print("\n" + "="*60)
         print("SESAME SEED DETECTION - OPTIMIZED TRAINING")
@@ -300,20 +305,25 @@ class OptimizedSesameTrainer:
             print("\n❌ Dataset check failed")
             return False
         
-        # Ask for mode
-        print("\nSelect training mode:")
-        print("1. Optimized (Recommended for most PCs)")
-        print("2. Ultra-lightweight (For very low-spec PCs)")
-        print("3. Custom settings")
-        
-        choice = input("\nEnter choice (1-3, default=1): ").strip()
-        
-        if choice == '2':
-            results = self.train_lightweight()
-        elif choice == '3':
-            self.custom_settings()
-            results = self.train()
+        if interactive:
+            # Ask for mode
+            print("\nSelect training mode:")
+            print("1. Optimized (Recommended for most PCs)")
+            print("2. Ultra-lightweight (For very low-spec PCs)")
+            print("3. Custom settings")
+            
+            choice = input("\nEnter choice (1-3, default=1): ").strip()
+            
+            if choice == '2':
+                results = self.train_lightweight()
+            elif choice == '3':
+                self.custom_settings()
+                results = self.train()
+            else:
+                results = self.train()
         else:
+            # Non-interactive mode uses default optimized settings
+            print("\nRunning in NON-INTERACTIVE mode (Optimized settings)")
             results = self.train()
         
         if results is not None:
