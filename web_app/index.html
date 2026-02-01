@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sesame Detection System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <h1>Sesame AI</h1>
+        <p>Advanced Seed Classification & Detection System</p>
+      </header>
+
+      <section class="upload-section">
+        <div class="glass-card drop-zone" id="dropZone">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p>Drag and drop image or <strong>click to browse</strong></p>
+          <input type="file" id="imageInput" accept="image/*" />
+        </div>
+      </section>
+
+      <section class="results-section" id="resultsSection">
+        <div class="preview-container glass-card">
+          <h2 style="margin-bottom: 1rem;">Detection Preview</h2>
+          <div class="image-wrapper">
+            <img id="annotatedImage" src="" alt="Annotated Detection" />
+          </div>
+          <div style="display: flex; gap: 1rem; margin-top: auto;">
+             <button id="resetBtn" style="padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: 1px solid var(--glass-border); background: transparent; color: white; cursor: pointer;">Upload New Image</button>
+          </div>
+        </div>
+
+        <div class="stats-container">
+          <div class="glass-card">
+             <h2 style="margin-bottom: 1.5rem;">Detection Summary</h2>
+             
+             <div class="stat-card" style="margin-bottom: 1.5rem; background: rgba(99, 102, 241, 0.1);">
+                <h3>Total Seeds Detected</h3>
+                <div class="value" id="totalCount">0</div>
+             </div>
+
+             <div class="stat-grid">
+                <div class="stat-card healthy">
+                   <h3>Healthy</h3>
+                   <div class="value" id="healthyCount">0</div>
+                   <div class="percentage" id="healthyPercent">0%</div>
+                   <div class="percentage-bar">
+                      <div class="percentage-fill" id="healthyBar" style="background: var(--accent-healthy); width: 0%"></div>
+                   </div>
+                </div>
+
+                <div class="stat-card black">
+                   <h3>Black</h3>
+                   <div class="value" id="blackCount">0</div>
+                   <div class="percentage" id="blackPercent">0%</div>
+                   <div class="percentage-bar">
+                      <div class="percentage-fill" id="blackBar" style="background: var(--accent-black); width: 0%"></div>
+                   </div>
+                </div>
+
+                <div class="stat-card rain">
+                   <h3>Rain Damaged</h3>
+                   <div class="value" id="rainCount">0</div>
+                   <div class="percentage" id="rainPercent">0%</div>
+                   <div class="percentage-bar">
+                      <div class="percentage-fill" id="rainBar" style="background: var(--accent-rain); width: 0%"></div>
+                   </div>
+                </div>
+             </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

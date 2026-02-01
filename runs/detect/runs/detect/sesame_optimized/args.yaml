@@ -2,16 +2,16 @@ task: detect
 mode: train
 model: yolov8n.pt
 data: yolov8/dataset.yaml
-epochs: 20
+epochs: 30
 time: null
-patience: 5
-batch: 2
-imgsz: 224
+patience: 10
+batch: 4
+imgsz: 320
 save: true
 save_period: -1
 cache: false
 device: cpu
-workers: 1
+workers: 2
 project: runs/detect
 name: sesame_optimized
 exist_ok: true
@@ -106,4 +106,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: /media/osama/E/Projects/Sesame-Seeds-Detection-System/runs/detect/runs/detect/sesame_optimized
+save_dir: /Users/apple/Desktop/Sesame-Seeds-Detection-System/runs/detect/runs/detect/sesame_optimized
